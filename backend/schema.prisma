@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================= ENUMS =============================
+
+enum AgendamentoStatus {
+  scheduled
+  in_progress
+  done
+  canceled
+  deleted // NOVO: Para Soft Delete (UC05)
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+  partial
+  refunded
+}
+
+// NOVO ENUM: Para tipar as ações do log de auditoria
+enum AuditAction {
+  CRIACAO
+  ATUALIZACAO
+  STATUS_MUDOU
+  REPOSICIONADO
+  INICIADO
+  FINALIZADO
+  CANCELADO
+  EXCLUIDO // Soft delete
+  REAGENDADO
+}
+
+// ============================= MODELOS =============================
+
+model prestadores {
+  id              String         @id @default(uuid()) @db.Uuid
+  nome            String         @db.VarChar(255)
+  email           String         @unique @db.VarChar(255)
+  senha_hash      String         @db.VarChar(255)
+  criado_em       DateTime?      @default(now()) @db.Timestamp(6)
+  atualizado_em   DateTime?      @default(now()) @db.Timestamp(6)
+
+  clientes        clientes[]
+  servicos        servicos[]
+  agendamentos    agendamentos[]
+  audit_logs      audit_logs[]
+}
+
+model clientes {
+  id              String         @id @default(uuid()) @db.Uuid
+  prestador_id    String         @db.Uuid
+  nome            String         @db.VarChar(255)
+  telefone        String?        @db.VarChar(50)
+  email           String?        @db.VarChar(255)
+  pendencia       Boolean        @default(false)
+  criado_em       DateTime?      @default(now()) @db.Timestamp(6)
+  atualizado_em   DateTime?      @default(now()) @db.Timestamp(6)
+
+  prestador       prestadores    @relation(fields: [prestador_id], references: [id])
+  agendamentos    agendamentos[]
+
+  @@index([prestador_id])
+}
+
+model servicos {
+  id              String         @id @default(uuid()) @db.Uuid
+  prestador_id    String         @db.Uuid
+  nome            String         @db.VarChar(255)
+  preco           Decimal        @db.Decimal(10, 2)
+  duracao_min     Int            @default(30)
+  criado_em       DateTime?      @default(now()) @db.Timestamp(6)
+
+  prestador       prestadores    @relation(fields: [prestador_id], references: [id])
+  agendamentos    agendamentos[]
+
+  @@index([prestador_id])
+}
+
+model agendamentos {
+  id                  String            @id @default(uuid()) @db.Uuid
+  prestador_id        String            @db.Uuid
+  cliente_id          String?           @db.Uuid
+  servico_id          String            @db.Uuid
+
+  // Controle de Agendamento e Reposicionamento
+  data_agendada       DateTime          @db.Timestamp(6) // Data/Hora agendada (Mantido o nome)
+  position_index      Int               // NOVO: Ordem do item na fila do dia
+  version             Int               @default(1) // NOVO: Controle de Concorrência Otimista
+
+  // Status e Pagamento
+  status              AgendamentoStatus @default(scheduled)
+  payment_status      PaymentStatus     @default(unpaid)
+
+  // Timestamps de Duração
+  iniciado_em         DateTime?         @db.Timestamp(6) // Início real (Mantido o nome)
+  finalizado_em       DateTime?         @db.Timestamp(6) // Fim real (Mantido o nome)
+  real_duration_min   Int?              // NOVO: Duração real em minutos
+
+  // Timestamps de Transição (Reagendamento/Cancelamento/Soft Delete)
+  previous_start_at   DateTime?         @db.Timestamp(6) // NOVO: Data/Hora antes do reagendamento
+  rescheduled_at      DateTime?         @db.Timestamp(6) // NOVO: Quando foi reagendado
+  canceled_at         DateTime?         @db.Timestamp(6) // NOVO: Quando foi cancelado
+  deleted_at          DateTime?         @db.Timestamp(6) // Soft Delete (Mantido o nome)
+
+  // Timestamps de Criação/Atualização
+  criado_em           DateTime?         @default(now()) @db.Timestamp(6)
+  atualizado_em       DateTime?         @default(now()) @db.Timestamp(6)
+
+  // Relacionamentos
+  prestador           prestadores       @relation(fields: [prestador_id], references: [id])
+  cliente             clientes?         @relation(fields: [cliente_id], references: [id])
+  servico             servicos          @relation(fields: [servico_id], references: [id])
+  audit_logs          audit_logs[]
+
+  @@index([prestador_id])
+  @@index([cliente_id])
+  @@index([servico_id])
+  @@index([prestador_id, data_agendada])
+  @@index([prestador_id, data_agendada, position_index]) // Novo índice para Reorder
+}
+
+model audit_logs {
+  id              String         @id @default(uuid()) @db.Uuid
+  prestador_id    String         @db.Uuid
+  agendamento_id  String?        @db.Uuid
+  entidade        String?        @db.VarChar(50)  // NOVO: Entidade auditada (ex: 'Cliente', 'Agendamento')
+  action          AuditAction    // NOVO: Ação específica
+  before          Json?          // NOVO: Snapshot do objeto antes da mudança
+  after           Json?          // NOVO: Snapshot do objeto depois da mudança
+  user_actor_id   String?        @db.Uuid
+  metadata        Json?
+  criado_em       DateTime?      @default(now()) @db.Timestamp(6)
+
+  prestador       prestadores    @relation(fields: [prestador_id], references: [id])
+  agendamento     agendamentos?  @relation(fields: [agendamento_id], references: [id])
+
+  @@index([prestador_id])
+  @@index([agendamento_id])
+  @@index([action])
+}

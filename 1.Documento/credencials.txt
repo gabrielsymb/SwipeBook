@@ -1,0 +1,6 @@
+  id: 'c2a73db8-fd9b-4406-8860-4d0e750443a1',
+  nome: 'Prestador Demo',
+  email: 'demo@example.com',
+  senha_hash: 'hash-demo',
+  criado_em: 2025-11-25T09:05:10.295Z,
+  atualizado_em: 2025-11-25T09:05:10.295Z

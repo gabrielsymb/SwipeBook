@@ -1,0 +1,25 @@
+{
+  "name": "swipebook-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "ts-node server/index.ts",
+    "prisma:migrate": "prisma migrate dev --name init --schema schema.prisma",
+    "prisma:generate": "prisma generate --schema schema.prisma",
+    "prisma:studio": "prisma studio --schema schema.prisma",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.1",
+    "prisma": "5.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}

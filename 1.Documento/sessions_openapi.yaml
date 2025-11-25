@@ -1,0 +1,155 @@
+
+openapi: 3.0.1
+info:
+  title: SwipeBook Sessions API
+  version: "1.0.0"
+servers:
+  - url: https://api.yourswipebook.example
+paths:
+  /sessions:
+    post:
+      summary: Iniciar sessão (start)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_op_id:
+                  type: string
+                  format: uuid
+                appointment_id:
+                  type: string
+                  format: uuid
+                client_started_at:
+                  type: string
+                  format: date-time
+              required:
+                - client_op_id
+                - appointment_id
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                  appointment_id:
+                    type: string
+                    format: uuid
+                  started_at:
+                    type: string
+                    format: date-time
+                  status:
+                    type: string
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+        "409":
+          description: Conflict - already active session
+  /sessions/{session_id}/heartbeat:
+    post:
+      summary: Heartbeat da sessão
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_op_id:
+                  type: string
+                  format: uuid
+                elapsed_ms:
+                  type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                  last_heartbeat_at:
+                    type: string
+                    format: date-time
+                  accepted_elapsed_ms:
+                    type: integer
+        "404":
+          description: Not Found
+  /sessions/{session_id}/pause:
+    patch:
+      summary: Pause da sessão
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_op_id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Paused
+  /sessions/{session_id}/stop:
+    post:
+      summary: Stop/Finish da sessão
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_op_id:
+                  type: string
+                  format: uuid
+                elapsed_ms:
+                  type: integer
+      responses:
+        "200":
+          description: Session stopped and appointment updated
+  /sessions/active:
+    get:
+      summary: Obter sessão ativa do usuário
+      responses:
+        "200":
+          description: Active session
+  /appointments/next:
+    get:
+      summary: Próximo agendamento
+      responses:
+        "200":
+          description: Next appointment preview
