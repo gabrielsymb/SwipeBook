@@ -1,15 +1,20 @@
 // server/index.ts
+import cors from "cors";
 import express, {
   type NextFunction,
   type Request,
   type Response,
 } from "express";
-import { buildRouter as buildRouterNamed } from "../rotas/index.js";
+import buildRouter from "../rotas/index.js";
 
 async function bootstrap(): Promise<void> {
   try {
     console.log("[BOOT] Iniciando servidor...");
     const app = express();
+
+    // HABILITAR CORS (Antes das rotas)
+    app.use(cors());
+
     app.use(express.json());
 
     app.use((req: Request, _res: Response, next: NextFunction): void => {
@@ -17,8 +22,8 @@ async function bootstrap(): Promise<void> {
       next();
     });
 
-    // Usa default export; named mantido para compatibilidade
-    app.use(buildRouterNamed());
+    // Usa default export do router
+    app.use(buildRouter());
 
     app.get("/health", (_req: Request, res: Response): void => {
       res.json({ status: "ok" });

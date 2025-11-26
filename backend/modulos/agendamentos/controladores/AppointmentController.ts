@@ -16,8 +16,13 @@ export class AppointmentController {
     try {
       const prestadorId = req.prestadorId as string;
       const dto = req.body as CreateAppointmentDTO;
-      const created = await createAppointmentService.execute(prestadorId, dto);
-      return res.status(201).json(created);
+      const result = await createAppointmentService.execute(prestadorId, dto);
+      // Se o serviço sinalizar necessidade de confirmação, retornamos 202 Accepted
+      if (result && (result as any).needsConfirmation) {
+        return res.status(202).json(result);
+      }
+      // Caso contrário, é o agendamento criado normalmente
+      return res.status(201).json(result);
     } catch (e: any) {
       return res.status(400).json({ error: e.message });
     }

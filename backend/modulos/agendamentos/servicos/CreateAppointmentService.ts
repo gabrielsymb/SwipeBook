@@ -1,4 +1,6 @@
+import { prisma } from "../../../config/prisma.js";
 import { clientRepository } from "../../clientes/repositorios/ClientRepository.js";
+import { updatePaymentStatusService } from "../../financeiro/servicos/UpdatePaymentStatusService.js";
 import { serviceRepository } from "../../servicos/repositorios/ServiceRepository.js";
 import { LexicalReorderUtility } from "../../utils/LexicalReorderUtility.js";
 import type { CreateAppointmentDTO } from "../dtos/CreateAppointmentDTO.js";
@@ -67,6 +69,59 @@ export class CreateAppointmentService {
         );
       }
       cliente = c;
+
+      // Verificação de pendência: se o cliente estiver marcado com pendencia,
+      // retornamos um objeto sinalizando que é necessária confirmação no front-end.
+      // Se for enviada a flag forceCreate, ignoramos a pendencia e prosseguimos.
+      if ((c as any).pendencia && !dto.forceCreate) {
+        // Construir resumo das pendências para o front-end
+        const baseWhere = {
+          cliente_id: c.id,
+          status_pagamento: "pendente",
+        } as any;
+
+        const totalCount = await prisma.agendamentos.count({
+          where: baseWhere,
+        });
+
+        const pendingList = await prisma.agendamentos.findMany({
+          where: baseWhere,
+          select: {
+            id: true,
+            valor_final: true,
+            scheduled_start_at: true,
+            servico: { select: { id: true, nome: true } },
+          },
+          orderBy: { scheduled_start_at: "asc" },
+          take: 10,
+        });
+
+        let total = 0;
+        const items = pendingList.map((p: any) => {
+          const valAny: any = p.valor_final;
+          const valor =
+            valAny && typeof valAny.toNumber === "function"
+              ? valAny.toNumber()
+              : Number(valAny) || 0;
+          total += valor;
+          return {
+            id: p.id,
+            valor,
+            servicoNome: p.servico?.nome,
+            data: p.scheduled_start_at,
+          };
+        });
+
+        return {
+          needsConfirmation: true,
+          client: c,
+          pendingSummary: {
+            count: totalCount,
+            total,
+            items,
+          },
+        } as any;
+      }
     }
 
     // Calcular positionKey para inserção no fim da lista do dia
@@ -107,6 +162,21 @@ export class CreateAppointmentService {
       },
       metadata: { data_agendada: dto.dataAgendada },
     });
+
+    // Se solicitado, marcar como pago imediatamente e sincronizar pendencia
+    if (dto.markAsPaid) {
+      try {
+        // Atualiza o status de pagamento do agendamento
+        // Nota: NÃO sincronizamos automaticamente a flag 'pendencia' aqui para preservar o comportamento manual/alerta.
+        await updatePaymentStatusService.execute(
+          prestadorId,
+          created.id,
+          "pago"
+        );
+      } catch (err) {
+        // Não falhar a criação por conta de problema na atualização de pagamento
+      }
+    }
 
     return created;
   }
