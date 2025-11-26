@@ -1,7 +1,7 @@
-import { FinishAppointmentDTO } from "../dtos/FinishAppointmentDTO";
-import { appointmentRepository } from "../repositorios/AppointmentRepository";
-import type { AuditActionEnum } from "../repositorios/AuditLogRepository";
-import { auditLogRepository } from "../repositorios/AuditLogRepository";
+import type { FinishAppointmentDTO } from "../dtos/FinishAppointmentDTO.js";
+import { appointmentRepository } from "../repositorios/AppointmentRepository.js";
+import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
+import { auditLogRepository } from "../repositorios/AuditLogRepository.js";
 
 // Serviço de conclusão de atendimento.
 // Regras:
@@ -27,11 +27,15 @@ export class FinishAppointmentService {
       Math.round((now.getTime() - ag.iniciado_em.getTime()) / 60000)
     );
 
-    const updated = await appointmentRepository.update(ag.id, {
-      status: "done",
-      finalizado_em: now,
-      real_duration_min: realDurationMin,
-    });
+    const updated = await appointmentRepository.updateWithVersionControl(
+      ag.id,
+      ag.version,
+      {
+        status: "done",
+        finalizado_em: now,
+        real_duration_min: realDurationMin,
+      }
+    );
 
     await auditLogRepository.register({
       prestadorId,

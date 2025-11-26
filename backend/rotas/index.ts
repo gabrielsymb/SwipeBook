@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { registerAppointmentRoutes } from "../modulos/agendamentos/rotas/AppointmentRoutes";
-import { registerClientRoutes } from "../modulos/clientes/rotas/ClientRoutes";
+import { registerAppointmentRoutes } from "../modulos/agendamentos/rotas/AppointmentRoutes.js";
+import { registerClientRoutes } from "../modulos/clientes/rotas/ClientRoutes.js";
 
 // Router agregador: registra rotas de todos os módulos.
 // Novos módulos devem expor função semelhante registerXRoutes.

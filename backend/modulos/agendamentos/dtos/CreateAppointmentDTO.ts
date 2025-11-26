@@ -1,8 +1,11 @@
-// DTO de criação de agendamento (entrada do controller)
+// DTO de criação de agendamento.
+// Observações:
+// - dataAgendada deve vir como string ISO (UTC ou com timezone) e será convertida para Date no service.
+// - walkInNome usado se clienteId não for fornecido (futuro: validação específica).
 export interface CreateAppointmentDTO {
-  servicoId: string; // Serviço associado (obrigatório para duração/preço)
-  clienteId?: string; // Cliente cadastrado (opcional se walk-in)
-  walkInNome?: string; // Nome rápido se for atendimento avulso
-  dataAgendada: string; // ISO string da data/hora agendada
+  servicoId: string;
+  clienteId?: string;
+  walkInNome?: string;
+  dataAgendada: string; // ISO string
   paymentStatus?: "unpaid" | "paid" | "partial" | "refunded";
 }

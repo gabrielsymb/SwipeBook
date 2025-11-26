@@ -1,6 +1,6 @@
-import { Request, Response } from "express";
-import { CreateClientDTO } from "../dtos/CreateClientDTO";
-import { createClientService } from "../servicos/CreateClientService";
+import type { Request, Response } from "express";
+import type { CreateClientDTO } from "../dtos/CreateClientDTO.js";
+import { createClientService } from "../servicos/CreateClientService.js";
 
 // Controller: camada HTTP. RESPONSABILIDADE:
 // 1. Extrair dados da requisição

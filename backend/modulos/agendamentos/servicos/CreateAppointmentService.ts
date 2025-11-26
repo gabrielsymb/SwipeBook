@@ -1,7 +1,9 @@
-import { CreateAppointmentDTO } from "../dtos/CreateAppointmentDTO";
-import { appointmentRepository } from "../repositorios/AppointmentRepository";
-import type { AuditActionEnum } from "../repositorios/AuditLogRepository";
-import { auditLogRepository } from "../repositorios/AuditLogRepository";
+import { clientRepository } from "../../clientes/repositorios/ClientRepository.js";
+import { serviceRepository } from "../../servicos/repositorios/ServiceRepository.js";
+import type { CreateAppointmentDTO } from "../dtos/CreateAppointmentDTO.js";
+import { appointmentRepository } from "../repositorios/AppointmentRepository.js";
+import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
+import { auditLogRepository } from "../repositorios/AuditLogRepository.js";
 
 // Serviço de criação de agendamento.
 // Regras principais:
@@ -40,14 +42,43 @@ export class CreateAppointmentService {
       );
     }
 
-    // Persistir agendamento
-    const created = await appointmentRepository.create({
+    // Buscar cliente se clienteId informado (via repositório)
+    let cliente: { id: string } | null = null;
+    if (dto.clienteId) {
+      const c = await clientRepository.findById(dto.clienteId);
+      if (!c)
+        throw new Error("Cliente não encontrado pelo clienteId informado");
+      cliente = c;
+    }
+
+    // Buscar serviço via repositório de serviços
+    const servico = await serviceRepository.findById(dto.servicoId);
+    if (!servico) throw new Error("Serviço não encontrado");
+
+    // Calcular positionIndex antes de criar
+    const positionIndex =
+      await appointmentRepository.getNextPositionIndexForDay(
+        prestadorId,
+        dataAgendada
+      );
+
+    // Monta payload evitando passar undefined em exactOptionalPropertyTypes
+    const createPayload: {
+      prestadorId: string;
+      servicoId: string;
+      dataAgendada: Date;
+      paymentStatus?: "unpaid" | "paid" | "partial" | "refunded";
+      positionIndex: number;
+      clienteId?: string;
+    } = {
       prestadorId,
-      clienteId: dto.clienteId,
-      servicoId: dto.servicoId,
+      servicoId: servico.id,
       dataAgendada,
-      paymentStatus: dto.paymentStatus,
-    });
+      paymentStatus: dto.paymentStatus ?? "unpaid",
+      positionIndex,
+    };
+    if (cliente) createPayload.clienteId = cliente.id;
+    const created = await appointmentRepository.create(createPayload);
 
     // Registrar auditoria
     await auditLogRepository.register({

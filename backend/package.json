@@ -2,7 +2,7 @@
   "name": "swipebook-backend",
   "version": "0.1.0",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "dev": "ts-node server/index.ts",
     "prisma:migrate": "prisma migrate dev --name init --schema schema.prisma",
@@ -20,6 +20,6 @@
     "@types/node": "^24.10.1",
     "prisma": "5.22.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.0"
+    "typescript": "^5.9.3"
   }
 }

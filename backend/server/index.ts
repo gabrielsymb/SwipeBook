@@ -1,28 +1,34 @@
-import express from "express";
-import buildRouter from "../rotas/index";
+// server/index.ts
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
+import buildRouter from "../rotas/index.js";
 
-// Inicialização protegida em try/catch para capturar erros antes de levantar servidor
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   try {
     console.log("[BOOT] Iniciando servidor...");
     const app = express();
     app.use(express.json());
 
-    // Log simples de cada requisição para diagnosticar se está chegando tráfego
-    app.use((req, _res, next) => {
+    app.use((req: Request, _res: Response, next: NextFunction): void => {
       console.log(`[REQ] ${req.method} ${req.url}`);
       next();
     });
 
     app.use(buildRouter());
 
-    app.get("/health", (_req, res) => res.json({ status: "ok" }));
+    app.get("/health", (_req: Request, res: Response): void => {
+      res.json({ status: "ok" });
+    });
 
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    // CORREÇÃO: Sintaxe correta para variável de ambiente
+    const PORT: number | string = process.env["PORT"] || 3000;
+    app.listen(PORT, (): void => {
       console.log(`[BOOT] Servidor iniciado na porta ${PORT}`);
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[BOOT][ERRO] Falha ao iniciar servidor:", err);
     process.exit(1);
   }

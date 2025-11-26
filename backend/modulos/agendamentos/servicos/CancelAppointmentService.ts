@@ -1,7 +1,7 @@
-import { CancelAppointmentDTO } from "../dtos/CancelAppointmentDTO";
-import { appointmentRepository } from "../repositorios/AppointmentRepository";
-import type { AuditActionEnum } from "../repositorios/AuditLogRepository";
-import { auditLogRepository } from "../repositorios/AuditLogRepository";
+import type { CancelAppointmentDTO } from "../dtos/CancelAppointmentDTO.js";
+import { appointmentRepository } from "../repositorios/AppointmentRepository.js";
+import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
+import { auditLogRepository } from "../repositorios/AuditLogRepository.js";
 
 // Serviço de cancelamento.
 // Regras:
@@ -20,10 +20,15 @@ export class CancelAppointmentService {
     }
 
     const now = new Date();
-    const updated = await appointmentRepository.update(ag.id, {
-      status: "canceled",
-      canceled_at: now,
-    });
+    // Controle de concorrência otimista: usa versão atual do registro
+    const updated = await appointmentRepository.updateWithVersionControl(
+      ag.id,
+      ag.version,
+      {
+        status: "canceled",
+        canceled_at: now,
+      }
+    );
 
     await auditLogRepository.register({
       prestadorId,

@@ -1,4 +1,4 @@
-import { prisma } from "../../../config/prisma";
+import { prisma } from "../../../config/prisma.js";
 // Tipos literais para ações de auditoria, alinhados ao enum do Prisma
 export type AuditActionEnum =
   | "CRIACAO"

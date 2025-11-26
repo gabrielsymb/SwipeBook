@@ -1,7 +1,7 @@
-import { StartAppointmentDTO } from "../dtos/StartAppointmentDTO";
-import { appointmentRepository } from "../repositorios/AppointmentRepository";
-import type { AuditActionEnum } from "../repositorios/AuditLogRepository";
-import { auditLogRepository } from "../repositorios/AuditLogRepository";
+import type { StartAppointmentDTO } from "../dtos/StartAppointmentDTO.js";
+import { appointmentRepository } from "../repositorios/AppointmentRepository.js";
+import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
+import { auditLogRepository } from "../repositorios/AuditLogRepository.js";
 
 // Serviço de início de atendimento.
 // Regras:
@@ -32,10 +32,14 @@ export class StartAppointmentService {
 
     const now = new Date();
     const before = { status: ag.status, iniciado_em: ag.iniciado_em };
-    const updated = await appointmentRepository.update(ag.id, {
-      status: "in_progress",
-      iniciado_em: now,
-    });
+    const updated = await appointmentRepository.updateWithVersionControl(
+      ag.id,
+      ag.version,
+      {
+        status: "in_progress",
+        iniciado_em: now,
+      }
+    );
 
     await auditLogRepository.register({
       prestadorId,

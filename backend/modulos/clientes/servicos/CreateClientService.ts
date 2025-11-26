@@ -1,5 +1,5 @@
-import { CreateClientDTO } from "../dtos/CreateClientDTO";
-import { clientRepository } from "../repositorios/ClientRepository";
+import type { CreateClientDTO } from "../dtos/CreateClientDTO.js";
+import { clientRepository } from "../repositorios/ClientRepository.js";
 
 // Serviço que CONTÉM REGRA DE NEGÓCIO para criação de cliente.
 // Aqui validamos condições antes de delegar a persistência ao repositório.
