@@ -37,6 +37,14 @@ export class AuditLogRepository {
       },
     });
   }
+
+  // Retorna eventos de auditoria para um agendamento ordenados do mais recente ao mais antigo
+  async listByAgendamento(agendamentoId: string) {
+    return prisma.audit_logs.findMany({
+      where: { agendamento_id: agendamentoId },
+      orderBy: { criado_em: "desc" },
+    });
+  }
 }
 
 export const auditLogRepository = new AuditLogRepository();
