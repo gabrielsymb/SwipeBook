@@ -12,6 +12,12 @@ export type Cliente = NonNullable<
 export class ClientRepository {
   /** Busca um cliente pelo ID. */
   async findById(id: string): Promise<Cliente | null> {
+    // Buscar apenas clientes ativos por padrão
+    return prisma.clientes.findFirst({ where: { id, ativo: true } });
+  }
+
+  // Busca mesmo que o cliente esteja inativo (uso administrativo/auditoria)
+  async findByIdAdmin(id: string): Promise<Cliente | null> {
     return prisma.clientes.findUnique({ where: { id } });
   }
 
@@ -21,7 +27,7 @@ export class ClientRepository {
     prestadorId: string
   ): Promise<Cliente | null> {
     return prisma.clientes.findFirst({
-      where: { id, prestador_id: prestadorId },
+      where: { id, prestador_id: prestadorId, ativo: true },
     });
   }
 
@@ -43,7 +49,7 @@ export class ClientRepository {
   async listByPrestador(prestadorId: string, page = 1, pageSize = 20) {
     const skip = (page - 1) * pageSize;
     return prisma.clientes.findMany({
-      where: { prestador_id: prestadorId },
+      where: { prestador_id: prestadorId, ativo: true },
       orderBy: { criado_em: "desc" },
       skip,
       take: pageSize,
@@ -54,7 +60,7 @@ export class ClientRepository {
   // Justificativa: garantia de unicidade contextual (mesmo email não duplicado para o mesmo dono de agenda).
   async findByEmail(prestadorId: string, email: string) {
     return prisma.clientes.findFirst({
-      where: { prestador_id: prestadorId, email },
+      where: { prestador_id: prestadorId, email, ativo: true },
     });
   }
 
@@ -88,9 +94,13 @@ export class ClientRepository {
     });
   }
 
-  // Remove definitivamente (se quiser futuramente usar soft delete, ajustar schema)
+  // Soft delete: marca cliente como inativo e registra deleted_at
   async delete(id: string) {
-    return prisma.clientes.delete({ where: { id } });
+    return prisma.clientes.update({
+      where: { id },
+      data: { ativo: false, deleted_at: new Date(), atualizado_em: new Date() },
+      select: { id: true, ativo: true, deleted_at: true },
+    });
   }
 
   // Pesquisa textual simples por nome (case-insensitive) dentro de um prestador
@@ -102,6 +112,27 @@ export class ClientRepository {
       },
       orderBy: { nome: "asc" },
       take: 50,
+    });
+  }
+
+  // Autocomplete: busca rápida adequada para campos de sugestão (retorna campos mínimos)
+  async autocomplete(prestadorId: string, term: string, limit = 10) {
+    if (!term || term.trim() === "") return [];
+    return prisma.clientes.findMany({
+      where: {
+        prestador_id: prestadorId,
+        nome: { contains: term, mode: "insensitive" },
+        ativo: true,
+      },
+      orderBy: { nome: "asc" },
+      take: limit,
+      select: {
+        id: true,
+        nome: true,
+        telefone: true,
+        email: true,
+        pendencia: true,
+      },
     });
   }
 }

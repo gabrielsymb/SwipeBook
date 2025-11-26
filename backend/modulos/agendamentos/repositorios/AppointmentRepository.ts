@@ -99,7 +99,7 @@ export class AppointmentRepository {
     });
   }
 
-  // MÉTODO CORRIGIDO E ESSENCIAL PARA REAGENDAMENTO E REORDER
+  // MÉTODO ESSENCIAL PARA REAGENDAMENTO E REORDER
   async updateWithVersionControl(
     id: string,
     currentVersion: number,
@@ -126,11 +126,7 @@ export class AppointmentRepository {
     return atualizado;
   }
 
-  // ############## MÉTODOS DE TRANSIÇÃO (Simplificados) ##############
-
-  // Método de bulk update removido (não necessário com Fractional Indexing)
-
-  // Soft Delete (Mantido o padrão anterior)
+  // Soft Delete
   async softDelete(id: string) {
     const now = new Date();
     return prisma.agendamentos.update({
@@ -156,6 +152,16 @@ export class AppointmentRepository {
       },
       orderBy: [{ data_agendada: "asc" }, { position_key: "asc" }],
     });
+  }
+
+  // Verifica se existe ao menos um agendamento (qualquer status exceto deleted)
+  async existsByClienteId(clienteId: string): Promise<boolean> {
+    if (!clienteId) return false;
+    const found = await prisma.agendamentos.findFirst({
+      where: { cliente_id: clienteId, status: { not: "deleted" } },
+      select: { id: true },
+    });
+    return !!found;
   }
 }
 

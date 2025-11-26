@@ -62,6 +62,8 @@ model clientes {
   pendencia       Boolean        @default(false)
   criado_em       DateTime?      @default(now()) @db.Timestamp(6)
   atualizado_em   DateTime?      @default(now()) @db.Timestamp(6)
+  ativo            Boolean        @default(true)
+  deleted_at       DateTime?      @db.Timestamp(6)
 
   prestador       prestadores    @relation(fields: [prestador_id], references: [id])
   agendamentos    agendamentos[]
