@@ -3,6 +3,7 @@ import { registerAppointmentRoutes } from "../modulos/agendamentos/rotas/Appoint
 import { registerAuthRoutes } from "../modulos/autenticacao/rotas/AuthRoutes.js";
 import { registerClientRoutes } from "../modulos/clientes/rotas/ClientRoutes.js";
 import { registerServiceRoutes } from "../modulos/servicos/rotas/ServiceRoutes.js";
+import { registerSessionRoutes } from "../modulos/sessoes/rotas/SessionRoutes.js";
 
 // Router agregador
 export function buildRouter() {
@@ -11,6 +12,7 @@ export function buildRouter() {
   registerAuthRoutes(router);
   registerAppointmentRoutes(router);
   registerServiceRoutes(router);
+  registerSessionRoutes(router);
   return router;
 }
 

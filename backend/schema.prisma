@@ -46,11 +46,11 @@ model prestadores {
   senha_hash      String         @db.VarChar(255)
   criado_em       DateTime?      @default(now()) @db.Timestamp(6)
   atualizado_em   DateTime?      @default(now()) @db.Timestamp(6)
-
   clientes        clientes[]
   servicos        servicos[]
   agendamentos    agendamentos[]
   audit_logs      audit_logs[]
+  sessions        sessions[]
 }
 
 model clientes {
@@ -121,6 +121,7 @@ model agendamentos {
   cliente             clientes?         @relation(fields: [cliente_id], references: [id])
   servico             servicos          @relation(fields: [servico_id], references: [id])
   audit_logs          audit_logs[]
+  session             sessions?
 
   @@index([prestador_id])
   @@index([cliente_id])
@@ -148,4 +149,21 @@ model audit_logs {
   @@index([prestador_id])
   @@index([agendamento_id])
   @@index([action])
+}
+
+// Sessões de tempo (DockPlayer / Timer)
+model sessions {
+  id                 String   @id @default(uuid()) @db.Uuid
+  prestador_id       String   @db.Uuid
+  agendamento_id     String   @unique @db.Uuid
+  started_at         DateTime @default(now()) @db.Timestamp(6)
+  last_heartbeat_at  DateTime @default(now()) @db.Timestamp(6)
+  elapsed_ms         BigInt   @default(0) @db.BigInt
+  status             String   @default("active") // active | paused | stopped
+  stopped_at         DateTime? @db.Timestamp(6)
+
+  prestador          prestadores @relation(fields: [prestador_id], references: [id])
+  agendamento        agendamentos @relation(fields: [agendamento_id], references: [id])
+
+  @@index([prestador_id, agendamento_id])
 }

@@ -109,5 +109,9 @@ HTTP/REST apenas entre Cliente -> Aplicação
 │ │
 │ Não define a lógica de negócio │
 └────────────────────────────────────────────────────────────────┘
-Scheduled → Adiar. Foco imediato no fluxo de vida principal (Create → Start → Finish) e nas transições complexas (Reschedule, Reorder). Ordenação diária: primária por data_agendada ASC e secundária por position_key ASC (LexoRank). Reorder altera apenas a position_key; mudanças de horário são feitas pelo Reschedule.
+(LexoRank). Reorder altera apenas a position_key; mudanças de horário são feitas pelo Reschedule.
 Auditoria precisa guardar usuário? Sim, mas não agora. No momento, guarde apenas o prestador_id (que será injetado pelo middleware de autenticação). A expansão de auditoria será para before/after snapshots e action enum.
+
+adicionado:
+
+modulo de relatorio:Para o Front-end poder exibir o "Apurado do Dia/Mês/Semana" (KPIs), precisamos de uma API de Agregação.
