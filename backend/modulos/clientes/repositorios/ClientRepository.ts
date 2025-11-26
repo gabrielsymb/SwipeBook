@@ -1,10 +1,30 @@
-import { prisma } from "../../../config/prisma.js";
+import { prisma } from "../../../config/prisma.js"; // ESM
 import type { CreateClientDTO } from "../dtos/CreateClientDTO.js";
+
+// Alias de tipo derivado do client (evita depender de tipos não exportados pelo pacote)
+export type Cliente = NonNullable<
+  Awaited<ReturnType<typeof prisma.clientes.findUnique>>
+>;
 
 // Repositório responsável POR ACESSO A DADOS da entidade Cliente.
 // IMPORTANTE: Aqui NÃO colocamos regra de negócio. Apenas persistência e consultas.
 // Motivação: separar preocupações facilita testes e manutenção.
 export class ClientRepository {
+  /** Busca um cliente pelo ID. */
+  async findById(id: string): Promise<Cliente | null> {
+    return prisma.clientes.findUnique({ where: { id } });
+  }
+
+  /** Busca um cliente pelo ID e garante que pertence ao Prestador. */
+  async findByIdAndPrestadorId(
+    id: string,
+    prestadorId: string
+  ): Promise<Cliente | null> {
+    return prisma.clientes.findFirst({
+      where: { id, prestador_id: prestadorId },
+    });
+  }
+
   // Cria um novo cliente persistindo no banco via Prisma.
   // Observação: valores default são definidos no schema (ex: pendencia=false)
   async create(prestadorId: string, data: CreateClientDTO) {
@@ -38,12 +58,7 @@ export class ClientRepository {
     });
   }
 
-  // Busca cliente por ID
-  async findById(id: string) {
-    return prisma.clientes.findUnique({
-      where: { id },
-    });
-  }
+  // (método findById já definido acima com tipagem precisa)
 
   // Atualiza dados básicos de um cliente
   async update(

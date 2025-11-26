@@ -42,18 +42,31 @@ export class CreateAppointmentService {
       );
     }
 
-    // Buscar cliente se clienteId informado (via repositório)
-    let cliente: { id: string } | null = null;
-    if (dto.clienteId) {
-      const c = await clientRepository.findById(dto.clienteId);
-      if (!c)
-        throw new Error("Cliente não encontrado pelo clienteId informado");
-      cliente = c;
+    // Buscar serviço via repositório de serviços (com validação de pertencimento)
+    const servico = await serviceRepository.findByIdAndPrestadorId(
+      dto.servicoId,
+      prestadorId
+    );
+    if (!servico) {
+      throw new Error(
+        "Serviço não encontrado ou não pertence a este prestador."
+      );
     }
 
-    // Buscar serviço via repositório de serviços
-    const servico = await serviceRepository.findById(dto.servicoId);
-    if (!servico) throw new Error("Serviço não encontrado");
+    // Buscar cliente se clienteId informado (via repositório) com validação de pertencimento
+    let cliente: { id: string } | null = null;
+    if (dto.clienteId) {
+      const c = await clientRepository.findByIdAndPrestadorId(
+        dto.clienteId,
+        prestadorId
+      );
+      if (!c) {
+        throw new Error(
+          "Cliente não encontrado ou não pertence a este prestador."
+        );
+      }
+      cliente = c;
+    }
 
     // Calcular positionIndex antes de criar
     const positionIndex =
