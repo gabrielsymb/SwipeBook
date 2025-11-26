@@ -1,10 +1,13 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
+import { authMiddleware } from "../../../middlewares/authMiddleware.js";
 import { appointmentController } from "../controladores/AppointmentController.js";
 import { rescheduleAppointmentController } from "../controladores/RescheduleAppointmentController.js";
 
 // Registra rotas relacionadas a agendamentos.
 export function registerAppointmentRoutes(router: Router): void {
+  // Aplica autenticação para rotas protegidas
+  router.use(authMiddleware);
   // Rotas antigas em inglês (manter compatibilidade)
   router.post("/appointments", (req: Request, res: Response): void => {
     appointmentController.create(req, res);

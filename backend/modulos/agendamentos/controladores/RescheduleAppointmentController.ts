@@ -5,18 +5,10 @@ import { rescheduleAppointmentService } from "../servicos/RescheduleAppointmentS
 // Controller específico para reagendamento (UC06)
 // Mantém responsabilidade focada e comentários em português conforme instrução.
 export class RescheduleAppointmentController {
-  private extractPrestadorId(req: Request): string | null {
-    const pid = req.headers["x-prestador-id"];
-    return typeof pid === "string" ? pid : null;
-  }
-
   async handle(req: Request, res: Response): Promise<Response> {
     try {
-      // 1. Validar header do prestador (controla tenant / multi-usuário)
-      const prestadorId = this.extractPrestadorId(req);
-      if (!prestadorId) {
-        return res.status(400).json({ error: "x-prestador-id obrigatório" });
-      }
+      // 1. prestadorId já validado pelo middleware
+      const prestadorId = req.prestadorId as string;
 
       // 2. Validar entrada mínima (novoStartAt, formato Date)
       const novoStartAtRaw = req.body?.novoStartAt;

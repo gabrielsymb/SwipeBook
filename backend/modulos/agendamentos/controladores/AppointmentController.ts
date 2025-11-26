@@ -12,17 +12,9 @@ import { startAppointmentService } from "../servicos/StartAppointmentService.js"
 
 // Controller de agendamentos: somente orquestra HTTP -> Serviços.
 export class AppointmentController {
-  private extractPrestadorId(req: Request): string | null {
-    const pid = req.headers["x-prestador-id"];
-    return typeof pid === "string" ? pid : null;
-  }
-
   async create(req: Request, res: Response): Promise<Response> {
     try {
-      const prestadorId = this.extractPrestadorId(req);
-      if (!prestadorId) {
-        return res.status(400).json({ error: "x-prestador-id obrigatório" });
-      }
+      const prestadorId = req.prestadorId as string;
       const dto = req.body as CreateAppointmentDTO;
       const created = await createAppointmentService.execute(prestadorId, dto);
       return res.status(201).json(created);
@@ -33,10 +25,7 @@ export class AppointmentController {
 
   async start(req: Request, res: Response): Promise<Response> {
     try {
-      const prestadorId = this.extractPrestadorId(req);
-      if (!prestadorId) {
-        return res.status(400).json({ error: "x-prestador-id obrigatório" });
-      }
+      const prestadorId = req.prestadorId as string;
       const idParam = req.params["id"];
       if (typeof idParam !== "string" || idParam.length === 0) {
         return res.status(400).json({ error: "id parâmetro obrigatório" });
@@ -51,10 +40,7 @@ export class AppointmentController {
 
   async finish(req: Request, res: Response): Promise<Response> {
     try {
-      const prestadorId = this.extractPrestadorId(req);
-      if (!prestadorId) {
-        return res.status(400).json({ error: "x-prestador-id obrigatório" });
-      }
+      const prestadorId = req.prestadorId as string;
       const idParam = req.params["id"];
       if (typeof idParam !== "string" || idParam.length === 0) {
         return res.status(400).json({ error: "id parâmetro obrigatório" });
@@ -69,10 +55,7 @@ export class AppointmentController {
 
   async cancel(req: Request, res: Response): Promise<Response> {
     try {
-      const prestadorId = this.extractPrestadorId(req);
-      if (!prestadorId) {
-        return res.status(400).json({ error: "x-prestador-id obrigatório" });
-      }
+      const prestadorId = req.prestadorId as string;
       const idParam = req.params["id"];
       if (typeof idParam !== "string" || idParam.length === 0) {
         return res.status(400).json({ error: "id parâmetro obrigatório" });
@@ -87,10 +70,7 @@ export class AppointmentController {
 
   async reschedule(req: Request, res: Response): Promise<Response> {
     try {
-      const prestadorId = this.extractPrestadorId(req);
-      if (!prestadorId) {
-        return res.status(400).json({ error: "x-prestador-id obrigatório" });
-      }
+      const prestadorId = req.prestadorId as string;
       const idParam = req.params["id"];
       if (typeof idParam !== "string" || idParam.length === 0) {
         return res.status(400).json({ error: "id parâmetro obrigatório" });
