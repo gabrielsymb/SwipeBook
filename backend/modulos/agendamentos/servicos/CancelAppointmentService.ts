@@ -3,31 +3,39 @@ import { appointmentRepository } from "../repositorios/AppointmentRepository.js"
 import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
 import { auditLogRepository } from "../repositorios/AuditLogRepository.js";
 
-// Serviço de cancelamento.
-// Regras:
-// - Permitido cancelar scheduled ou in_progress (decisão de negócio: pode cancelar em andamento)
-// - Estados finais (done) não podem cancelar
-// - Registra auditoria
+/**
+ * Serviço responsável por cancelar um agendamento.
+ * Regras principais:
+ * - Permitido cancelar quando status ∈ {"scheduled", "in_progress"}.
+ * - Não é permitido cancelar quando status ∈ {"done", "canceled"} ou qualquer outro não listado.
+ * - Usa controle de concorrência otimista via version no update.
+ * - Registra auditoria com before/after e metadados relevantes.
+ */
 export class CancelAppointmentService {
-  async execute(prestadorId: string, dto: CancelAppointmentDTO) {
-    const ag = await appointmentRepository.findById(dto.agendamentoId);
+  /**
+   * Executa o cancelamento de um agendamento.
+   * @param prestadorId ID do prestador autenticado (autorização por owner do agendamento)
+   * @param dto Objeto com o agendamentoId a ser cancelado
+   * @returns Agendamento atualizado após o cancelamento
+   * @throws Error se não encontrar/agendamento não pertencer ao prestador ou se status não permitir cancelamento
+   */
+  async execute(prestadorId: string, { agendamentoId }: CancelAppointmentDTO) {
+    const ag = await appointmentRepository.findById(agendamentoId);
+
     if (!ag || ag.prestador_id !== prestadorId) {
-      throw new Error("Agendamento não encontrado");
+      throw new Error("Agendamento não encontrado ou acesso negado.");
     }
 
-    if (ag.status === "done" || ag.status === "canceled") {
-      throw new Error("Agendamento já finalizado ou cancelado");
+    const allowed = ["scheduled", "in_progress"] as const;
+    if (!allowed.includes(ag.status as (typeof allowed)[number])) {
+      throw new Error(`Status não cancelável: ${ag.status}`);
     }
 
     const now = new Date();
-    // Controle de concorrência otimista: usa versão atual do registro
     const updated = await appointmentRepository.updateWithVersionControl(
       ag.id,
       ag.version,
-      {
-        status: "canceled",
-        canceled_at: now,
-      }
+      { status: "canceled", canceled_at: now }
     );
 
     await auditLogRepository.register({

@@ -1,5 +1,6 @@
 import { clientRepository } from "../../clientes/repositorios/ClientRepository.js";
 import { serviceRepository } from "../../servicos/repositorios/ServiceRepository.js";
+import { LexicalReorderUtility } from "../../utils/LexicalReorderUtility.js";
 import type { CreateAppointmentDTO } from "../dtos/CreateAppointmentDTO.js";
 import { appointmentRepository } from "../repositorios/AppointmentRepository.js";
 import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
@@ -68,12 +69,12 @@ export class CreateAppointmentService {
       cliente = c;
     }
 
-    // Calcular positionIndex antes de criar
-    const positionIndex =
-      await appointmentRepository.getNextPositionIndexForDay(
-        prestadorId,
-        dataAgendada
-      );
+    // Calcular positionKey para inserção no fim da lista do dia
+    const lastKey = await appointmentRepository.getLastPositionKeyForDay(
+      prestadorId,
+      dataAgendada
+    );
+    const positionKey = LexicalReorderUtility.getNewKey(lastKey, null);
 
     // Monta payload evitando passar undefined em exactOptionalPropertyTypes
     const createPayload: {
@@ -81,14 +82,14 @@ export class CreateAppointmentService {
       servicoId: string;
       dataAgendada: Date;
       paymentStatus?: "unpaid" | "paid" | "partial" | "refunded";
-      positionIndex: number;
+      positionKey: string;
       clienteId?: string;
     } = {
       prestadorId,
       servicoId: servico.id,
       dataAgendada,
       paymentStatus: dto.paymentStatus ?? "unpaid",
-      positionIndex,
+      positionKey,
     };
     if (cliente) createPayload.clienteId = cliente.id;
     const created = await appointmentRepository.create(createPayload);

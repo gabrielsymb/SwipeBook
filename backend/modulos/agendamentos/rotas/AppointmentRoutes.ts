@@ -2,7 +2,12 @@ import type { Request, Response } from "express";
 import { Router } from "express";
 import { authMiddleware } from "../../../middlewares/authMiddleware.js";
 import { appointmentController } from "../controladores/AppointmentController.js";
+import { cancelAppointmentController } from "../controladores/CancelAppointmentController.js";
+import { deleteAppointmentController } from "../controladores/DeleteAppointmentController.js";
+import { finishAppointmentController } from "../controladores/FinishAppointmentController.js";
+import { reorderAppointmentController } from "../controladores/ReorderAppointmentController.js";
 import { rescheduleAppointmentController } from "../controladores/RescheduleAppointmentController.js";
+import { startAppointmentController } from "../controladores/StartAppointmentController.js";
 
 // Registra rotas relacionadas a agendamentos.
 export function registerAppointmentRoutes(router: Router): void {
@@ -42,6 +47,44 @@ export function registerAppointmentRoutes(router: Router): void {
     "/agendamentos/:id/reagendar",
     (req: Request, res: Response): void => {
       rescheduleAppointmentController.handle(req, res);
+    }
+  );
+
+  // Iniciar atendimento (UC02) - rota em português
+  router.patch(
+    "/agendamentos/:id/iniciar",
+    (req: Request, res: Response): void => {
+      startAppointmentController.start(req, res);
+    }
+  );
+
+  // Finalizar atendimento (UC03) - rota em português
+  router.patch(
+    "/agendamentos/:id/finalizar",
+    (req: Request, res: Response): void => {
+      finishAppointmentController.finish(req, res);
+    }
+  );
+
+  // UC08: Reposicionar no dia (reorder)
+  router.patch(
+    "/agendamentos/:id/reorder",
+    (req: Request, res: Response): void => {
+      reorderAppointmentController.handle(req, res);
+    }
+  );
+  // Cancelar (UC04)
+  router.patch(
+    "/agendamentos/:id/cancel",
+    (req: Request, res: Response): void => {
+      cancelAppointmentController.cancel(req, res);
+    }
+  );
+  // Excluir lógico (UC05)
+  router.patch(
+    "/agendamentos/:id/delete",
+    (req: Request, res: Response): void => {
+      deleteAppointmentController.delete(req, res);
     }
   );
 }

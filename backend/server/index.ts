@@ -4,7 +4,7 @@ import express, {
   type Request,
   type Response,
 } from "express";
-import buildRouter from "../rotas/index.js";
+import { buildRouter as buildRouterNamed } from "../rotas/index.js";
 
 async function bootstrap(): Promise<void> {
   try {
@@ -17,7 +17,8 @@ async function bootstrap(): Promise<void> {
       next();
     });
 
-    app.use(buildRouter());
+    // Usa default export; named mantido para compatibilidade
+    app.use(buildRouterNamed());
 
     app.get("/health", (_req: Request, res: Response): void => {
       res.json({ status: "ok" });

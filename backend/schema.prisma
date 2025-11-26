@@ -91,7 +91,8 @@ model agendamentos {
 
   // Controle de Agendamento e Reposicionamento
   data_agendada       DateTime          @db.Timestamp(6) // Data/Hora agendada (Mantido o nome)
-  position_index      Int               // NOVO: Ordem do item na fila do dia
+  // position_index      Int               // (DESATIVADO) Ordem numérica antiga removida em favor de chave lexical
+  position_key        String            @default("") // NOVO: Chave lexical de ordenação (Lexorank / Fractional Index)
   version             Int               @default(1) // NOVO: Controle de Concorrência Otimista
 
   // Status e Pagamento
@@ -123,7 +124,8 @@ model agendamentos {
   @@index([cliente_id])
   @@index([servico_id])
   @@index([prestador_id, data_agendada])
-  @@index([prestador_id, data_agendada, position_index]) // Novo índice para Reorder
+  // @@index([prestador_id, data_agendada, position_index]) // índice antigo desativado
+  @@unique([prestador_id, data_agendada, position_key], name: "agendamento_dia_ordem") // Garantia de unicidade lexical por dia
 }
 
 model audit_logs {

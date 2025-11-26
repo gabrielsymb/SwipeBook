@@ -1,17 +1,22 @@
 import { prisma } from "../../../config/prisma.js";
+import { LexicalReorderUtility } from "../../utils/LexicalReorderUtility.js";
 import {
-  calcularNovaPosicao,
   isDataFutura,
   isHorarioConflitante,
-  isMesmoDia,
   isStatusReagendavel,
-  type AgendamentoDiaMin,
 } from "../dominio/ValidacoesTempo.js";
 import type { RescheduleAppointmentDTO } from "../dtos/RescheduleAppointmentDTO.js";
 import {
   appointmentRepository,
   type Agendamento,
 } from "../repositorios/AppointmentRepository.js";
+
+export class ConcurrencyError extends Error {
+  constructor(message = "Concorrência: versão desatualizada") {
+    super(message);
+    this.name = "ConcurrencyError";
+  }
+}
 
 export class RescheduleAppointmentService {
   /**
@@ -21,7 +26,7 @@ export class RescheduleAppointmentService {
    *  - Valida status atual (apenas scheduled)
    *  - Valida nova data/hora (não pode estar no passado)
    *  - Verifica conflito exato de timestamp no novo dia
-   *  - Recalcula position_index conforme ordenação temporal
+   *  - Gera nova position_key conforme ordenação temporal usando fractional indexing
    *  - Atualiza registrando previous_start_at + rescheduled_at e incrementa version
    *  - Registra log de auditoria (REAGENDADO) com before/after
    */
@@ -51,7 +56,7 @@ export class RescheduleAppointmentService {
       throw new Error("Novo horário deve estar no futuro");
     }
 
-    // 5. Carregar todos os agendamentos ativos do dia alvo (para cálculo de posição e conflitos)
+    // 5. Carregar agendamentos ativos do dia alvo (ordenados por position_key)
     const diaISO = `${novoStartAt.getUTCFullYear()}-${String(
       novoStartAt.getUTCMonth() + 1
     ).padStart(2, "0")}-${String(novoStartAt.getUTCDate()).padStart(2, "0")}`;
@@ -59,52 +64,50 @@ export class RescheduleAppointmentService {
       await appointmentRepository.listByPrestador(prestadorId, diaISO);
 
     // 6. Verificar conflito de timestamp exato (mesma data_agendada) ignorando o próprio registro
-    if (
-      isHorarioConflitante(
-        novoStartAt,
-        agendamentosDoDia.map(
-          (a: Agendamento): AgendamentoDiaMin & { id: string } => ({
-            id: a.id,
-            data_agendada: a.data_agendada,
-          })
-        ),
-        id
-      )
-    ) {
+    interface AgendamentoDiaMin {
+      id: string;
+      data_agendada: Date;
+    }
+    const diaMinList: Array<AgendamentoDiaMin & { id: string }> =
+      agendamentosDoDia.map((a) => ({
+        id: a.id,
+        data_agendada: a.data_agendada,
+      }));
+    if (isHorarioConflitante(novoStartAt, diaMinList, id)) {
       throw new Error("Horário já ocupado");
     }
 
-    // 7. Calcular nova posição na fila daquele dia
-    //    Estratégia: ordenar temporariamente e inserir após todos <= novo horário.
-    let novaPosicao: number;
-    const mudouDia = !isMesmoDia(agendamento.data_agendada, novoStartAt);
-    if (mudouDia) {
-      // Mudou de dia: utiliza todos agendamentos daquele dia
-      novaPosicao = calcularNovaPosicao(
-        novoStartAt,
-        agendamentosDoDia.map(
-          (a: Agendamento): AgendamentoDiaMin & { position_index: number } => ({
-            data_agendada: a.data_agendada,
-            position_index: a.position_index,
-          })
-        )
-      );
-    } else {
-      // Mesmo dia: remove o próprio da lista para não interferir no cálculo
-      novaPosicao = calcularNovaPosicao(
-        novoStartAt,
-        agendamentosDoDia
-          .filter((a: Agendamento): boolean => a.id !== id)
-          .map(
-            (
-              a: Agendamento
-            ): AgendamentoDiaMin & { position_index: number } => ({
-              data_agendada: a.data_agendada,
-              position_index: a.position_index,
-            })
-          )
-      );
+    // 7. Calcular nova chave lexical com base na ordenação temporal
+    // Estratégia: ordenar por data_agendada asc, obter vizinhos temporalmente adjacentes.
+    const listaSemAtual = agendamentosDoDia
+      .filter((a) => a.id !== id)
+      .sort((a, b) => a.data_agendada.getTime() - b.data_agendada.getTime());
+    let keyBefore: string | null = null;
+    let keyAfter: string | null = null;
+
+    // Encontrar posição temporal de inserção
+    let insertIndex = 0;
+    while (insertIndex < listaSemAtual.length) {
+      const current = listaSemAtual[insertIndex];
+      if (!current) break; // segurança para noUncheckedIndexedAccess
+      if (current.data_agendada.getTime() <= novoStartAt.getTime()) {
+        insertIndex++;
+        continue;
+      }
+      break;
     }
+    if (insertIndex > 0) {
+      const beforeItem = listaSemAtual[insertIndex - 1];
+      if (beforeItem) keyBefore = beforeItem.position_key;
+    }
+    if (insertIndex < listaSemAtual.length) {
+      const afterItem = listaSemAtual[insertIndex];
+      if (afterItem) keyAfter = afterItem.position_key;
+    }
+    const novaPositionKey = LexicalReorderUtility.getNewKey(
+      keyBefore,
+      keyAfter
+    );
 
     // 8. Preparar dados de atualização com histórico
     const agora = new Date();
@@ -112,8 +115,7 @@ export class RescheduleAppointmentService {
       data_agendada: novoStartAt,
       previous_start_at: agendamento.data_agendada,
       rescheduled_at: agora,
-      position_index: novaPosicao,
-      version: agendamento.version + 1, // Incremento para controle otimista
+      position_key: novaPositionKey,
     } as const;
 
     // 9. Atualizar registro. (Nota: poderíamos adicionar verificação de version no WHERE via raw query.)
@@ -127,7 +129,7 @@ export class RescheduleAppointmentService {
     } catch (e: unknown) {
       if (e instanceof Error && /Concorrência/.test(e.message)) {
         // Mensagem padronizada de concorrência para o controller diferenciar se quiser
-        throw new Error(
+        throw new ConcurrencyError(
           "CONCURRENCY_ERROR: versão desatualizada no reagendamento"
         );
       }
@@ -143,11 +145,11 @@ export class RescheduleAppointmentService {
         action: "REAGENDADO",
         before: {
           data_agendada: agendamento.data_agendada,
-          position_index: agendamento.position_index,
+          position_key: agendamento.position_key,
         },
         after: {
           data_agendada: atualizado.data_agendada,
-          position_index: atualizado.position_index,
+          position_key: atualizado.position_key,
         },
       },
     });

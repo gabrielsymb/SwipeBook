@@ -5,7 +5,7 @@ export type Agendamento = NonNullable<
   Awaited<ReturnType<typeof prisma.agendamentos.findUnique>>
 >;
 
-// Definição do Repositório
+// Definição do Repositório (versão Lexical)
 export class AppointmentRepository {
   // ############## UTILS PARA DATAS ##############
   private getDayRange(data: Date) {
@@ -40,23 +40,22 @@ export class AppointmentRepository {
     return prisma.agendamentos.findUnique({ where: { id } });
   }
 
-  // Retorna o próximo position_index disponível para o dia especificado.
-  async getNextPositionIndexForDay(
+  // Retorna a chave lexical do último agendamento do dia (para inserção no fim)
+  async getLastPositionKeyForDay(
     prestadorId: string,
     data: Date
-  ): Promise<number> {
+  ): Promise<string | null> {
     const range = this.getDayRange(data);
     const ultimo = await prisma.agendamentos.findFirst({
       where: {
         prestador_id: prestadorId,
         data_agendada: range,
-        // Inclui todos os status, exceto 'deleted', para o cálculo da fila
         status: { not: "deleted" },
       },
-      orderBy: { position_index: "desc" },
-      select: { position_index: true },
+      orderBy: { position_key: "desc" },
+      select: { position_key: true },
     });
-    return (ultimo?.position_index ?? 0) + 1;
+    return ultimo?.position_key ?? null;
   }
 
   // Verifica se há conflito de horário para a dataAgendada (ignora cancelados/deletados)
@@ -78,14 +77,14 @@ export class AppointmentRepository {
 
   // ############## MÉTODOS DE PERSISTÊNCIA ##############
 
-  // Cria um novo agendamento (simplificado, removendo lógica duplicada de position_index)
+  // Cria um novo agendamento com position_key já calculada externamente
   async create(data: {
     prestadorId: string;
     clienteId?: string;
     servicoId: string;
     dataAgendada: Date;
     paymentStatus?: "unpaid" | "paid" | "partial" | "refunded";
-    positionIndex: number; // Deve ser calculado antes (service)
+    positionKey: string; // chave lexical calculada antes (service)
   }): Promise<Agendamento> {
     return prisma.agendamentos.create({
       data: {
@@ -94,7 +93,7 @@ export class AppointmentRepository {
         servico_id: data.servicoId,
         data_agendada: data.dataAgendada,
         payment_status: data.paymentStatus ?? "unpaid",
-        position_index: data.positionIndex,
+        position_key: data.positionKey,
         version: 1,
       },
     });
@@ -129,6 +128,8 @@ export class AppointmentRepository {
 
   // ############## MÉTODOS DE TRANSIÇÃO (Simplificados) ##############
 
+  // Método de bulk update removido (não necessário com Fractional Indexing)
+
   // Soft Delete (Mantido o padrão anterior)
   async softDelete(id: string) {
     const now = new Date();
@@ -153,7 +154,7 @@ export class AppointmentRepository {
           lt: new Date(diaISO + "T23:59:59Z"),
         },
       },
-      orderBy: [{ data_agendada: "asc" }, { position_index: "asc" }],
+      orderBy: [{ data_agendada: "asc" }, { position_key: "asc" }],
     });
   }
 }

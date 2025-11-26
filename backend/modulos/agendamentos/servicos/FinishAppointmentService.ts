@@ -2,6 +2,7 @@ import type { FinishAppointmentDTO } from "../dtos/FinishAppointmentDTO.js";
 import { appointmentRepository } from "../repositorios/AppointmentRepository.js";
 import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
 import { auditLogRepository } from "../repositorios/AuditLogRepository.js";
+import { ConcurrencyError } from "./RescheduleAppointmentService.js";
 
 // Serviço de conclusão de atendimento.
 // Regras:
@@ -27,15 +28,23 @@ export class FinishAppointmentService {
       Math.round((now.getTime() - ag.iniciado_em.getTime()) / 60000)
     );
 
-    const updated = await appointmentRepository.updateWithVersionControl(
-      ag.id,
-      ag.version,
-      {
-        status: "done",
-        finalizado_em: now,
-        real_duration_min: realDurationMin,
+    let updated;
+    try {
+      updated = await appointmentRepository.updateWithVersionControl(
+        ag.id,
+        ag.version,
+        {
+          status: "done",
+          finalizado_em: now,
+          real_duration_min: realDurationMin,
+        }
+      );
+    } catch (e: any) {
+      if (e instanceof Error && /Concorrência/.test(e.message)) {
+        throw new ConcurrencyError();
       }
-    );
+      throw e;
+    }
 
     await auditLogRepository.register({
       prestadorId,

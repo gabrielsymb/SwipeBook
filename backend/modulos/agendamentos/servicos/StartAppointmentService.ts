@@ -2,56 +2,62 @@ import type { StartAppointmentDTO } from "../dtos/StartAppointmentDTO.js";
 import { appointmentRepository } from "../repositorios/AppointmentRepository.js";
 import type { AuditActionEnum } from "../repositorios/AuditLogRepository.js";
 import { auditLogRepository } from "../repositorios/AuditLogRepository.js";
+import { ConcurrencyError } from "./RescheduleAppointmentService.js";
 
-// Serviço de início de atendimento.
-// Regras:
-// - Status deve estar em scheduled
-// - Deve ser do dia atual (simplificação MVP)
-// - Registrar timestamp real de início
-// - Registrar auditoria
+/**
+ * Inicia a execução de um agendamento.
+ * Regras:
+ *  - Apenas status 'scheduled' pode iniciar.
+ *  - Registra timestamp real em iniciado_em.
+ *  - Controle otimista de concorrência via version.
+ *  - Auditoria obrigatória (INICIADO).
+ */
 export class StartAppointmentService {
-  async execute(prestadorId: string, dto: StartAppointmentDTO) {
-    const ag = await appointmentRepository.findById(dto.agendamentoId);
-    if (!ag || ag.prestador_id !== prestadorId) {
-      throw new Error("Agendamento não encontrado");
+  async execute(prestadorId: string, { agendamentoId }: StartAppointmentDTO) {
+    const agendamento = await appointmentRepository.findById(agendamentoId);
+    if (!agendamento || agendamento.prestador_id !== prestadorId) {
+      throw new Error("Agendamento não encontrado ou acesso negado.");
     }
-    if (ag.status !== "scheduled") {
+    if (agendamento.status !== "scheduled") {
       throw new Error(
-        "Somente agendamentos em status scheduled podem ser iniciados"
+        `Não é possível iniciar no status atual: ${agendamento.status}.`
       );
     }
 
-    const hoje = new Date();
-    const sameDay =
-      ag.data_agendada.getUTCFullYear() === hoje.getUTCFullYear() &&
-      ag.data_agendada.getUTCMonth() === hoje.getUTCMonth() &&
-      ag.data_agendada.getUTCDate() === hoje.getUTCDate();
-    if (!sameDay) {
-      throw new Error("Somente agendamentos do dia atual podem ser iniciados");
-    }
-
     const now = new Date();
-    const before = { status: ag.status, iniciado_em: ag.iniciado_em };
-    const updated = await appointmentRepository.updateWithVersionControl(
-      ag.id,
-      ag.version,
-      {
-        status: "in_progress",
-        iniciado_em: now,
+    const updatePayload = {
+      status: "in_progress" as const,
+      iniciado_em: now,
+    };
+
+    let atualizado;
+    try {
+      atualizado = await appointmentRepository.updateWithVersionControl(
+        agendamentoId,
+        agendamento.version,
+        updatePayload
+      );
+    } catch (e: any) {
+      if (e instanceof Error && /Concorrência/.test(e.message)) {
+        throw new ConcurrencyError();
       }
-    );
+      throw e;
+    }
 
     await auditLogRepository.register({
       prestadorId,
       entidade: "Agendamento",
-      agendamentoId: ag.id,
+      agendamentoId,
       action: "INICIADO" as AuditActionEnum,
-      before,
-      after: { status: updated.status, iniciado_em: updated.iniciado_em },
+      before: {
+        status: agendamento.status,
+        iniciado_em: agendamento.iniciado_em,
+      },
+      after: { status: atualizado.status, iniciado_em: atualizado.iniciado_em },
       metadata: { iniciado_em: now.toISOString() },
     });
 
-    return updated;
+    return atualizado;
   }
 }
 

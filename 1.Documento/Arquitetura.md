@@ -74,7 +74,7 @@ HTTP/REST apenas entre Cliente -> Aplicação
 │ Regras críticas: │
 │ • Restrição de status (fluxo válido) │
 │ • Cálculo de apuração │
-│ • Política de reorder (cálculo do novo índice) │
+│ • Política de reorder (cálculo de chave lexical) │
 │ • Geração de histórico │
 │ │
 │ Características: │
@@ -102,8 +102,12 @@ HTTP/REST apenas entre Cliente -> Aplicação
 │ • Garantir consistência e transações │
 │ • Consultas otimizadas │
 │ • Versionamento para concorrência │
+│ • Ordenação por LexoRank (position_key) usando fractional-indexing │
+│ - Chave lexical (String) calculada com generateKeyBetween(before, after) │
+│ - Índice único composto: (prestador_id, data_agendada, position_key) │
+│ - Sem bulk update de posições; reorder é O(1) (apenas UPDATE do item) │
 │ │
 │ Não define a lógica de negócio │
 └────────────────────────────────────────────────────────────────┘
-Scheduled → Adiar. Foco imediato no fluxo de vida principal (Create → Start → Finish) e nas transições complexas (Reschedule, Reorder). O atalho Scheduled → Done (para casos onde não há check-in ou check-out formal) pode ser incluído após o Reschedule.
+Scheduled → Adiar. Foco imediato no fluxo de vida principal (Create → Start → Finish) e nas transições complexas (Reschedule, Reorder). Ordenação diária: primária por data_agendada ASC e secundária por position_key ASC (LexoRank). Reorder altera apenas a position_key; mudanças de horário são feitas pelo Reschedule.
 Auditoria precisa guardar usuário? Sim, mas não agora. No momento, guarde apenas o prestador_id (que será injetado pelo middleware de autenticação). A expansão de auditoria será para before/after snapshots e action enum.
