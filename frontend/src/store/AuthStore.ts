@@ -9,6 +9,7 @@ interface AuthState {
   token: string | null;
   prestador: Prestador | null;
   isLoggedIn: boolean;
+  isAuthenticated: boolean; // Alias para isLoggedIn (compatibilidade)
 
   login: (token: string, prestador: Prestador) => void;
   logout: () => void;
@@ -19,15 +20,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   prestador: null,
   isLoggedIn: false,
+  isAuthenticated: false, // Alias para isLoggedIn
 
   login: (token, prestador) => {
     localStorage.setItem("swipebook_token", token);
-    set({ token, prestador, isLoggedIn: true });
+    set({ token, prestador, isLoggedIn: true, isAuthenticated: true });
   },
 
   logout: () => {
     localStorage.removeItem("swipebook_token");
-    set({ token: null, prestador: null, isLoggedIn: false });
+    set({
+      token: null,
+      prestador: null,
+      isLoggedIn: false,
+      isAuthenticated: false,
+    });
   },
 
   checkAuth: () => {
@@ -37,7 +44,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         id: "mock-id-123",
         nome: "Prestador Mock",
       };
-      set({ token: storedToken, prestador: mockPrestador, isLoggedIn: true });
+      set({
+        token: storedToken,
+        prestador: mockPrestador,
+        isLoggedIn: true,
+        isAuthenticated: true,
+      });
     }
   },
 }));

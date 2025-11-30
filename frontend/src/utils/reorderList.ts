@@ -12,7 +12,7 @@ export const reorderList = (
   newOrderIds: string[]
 ): Agendamento[] => {
   // 1. Cria um mapa {id: objeto} para acesso rápido O(1)
-  const map = new Map(list.map((item) => [item.id, item]));
+  const map = new Map(list.map((item: Agendamento) => [item.id, item]));
 
   // 2. Mapeia a nova ordem de IDs de volta para os objetos, ignorando IDs ausentes (filter(Boolean))
   const newList = newOrderIds

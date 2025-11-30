@@ -21,12 +21,14 @@ const AGENDA_QUERY_KEY = "appointments"; // Usada para invalidar o agendamento a
  * @description Hook para buscar a sessão ativa no Backend.
  * O resultado alimenta o estado global (Zustand).
  */
-export function useActiveSessionQuery() {
+export function useActiveSessionQuery(options: { enabled?: boolean } = {}) {
   const { setActiveSession } = useSessionStore();
+  const { enabled = true } = options;
 
   const query = useQuery<Sessao | null, ApiErrorResponse>({
     queryKey: [SESSION_QUERY_KEY],
     queryFn: sessionApi.fetchActiveSession,
+    enabled, // Adiciona controle condicional
 
     // Configurações: O estado da sessão é crucial, não deve ser considerado 'velho'.
     staleTime: Infinity,

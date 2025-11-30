@@ -8,14 +8,18 @@ const JWT_SECRET: string =
 
 export interface LoginDTO {
   email: string;
-  senha: string;
+  // Nome usado no frontend: password
+  password: string;
 }
 
 export class LoginService {
   /**
    * Valida credenciais e retorna token JWT com prestadorId
    */
-  async execute({ email, senha }: LoginDTO) {
+  async execute({ email, password }: LoginDTO) {
+    // Mapeia para o nome interno 'senha' usado no banco
+    const senha = password;
+
     const prestador = await prisma.prestadores.findUnique({ where: { email } });
     if (!prestador) {
       throw new Error("Credenciais inválidas.");

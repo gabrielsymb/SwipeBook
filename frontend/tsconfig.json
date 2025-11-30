@@ -3,7 +3,10 @@
     "target": "ES2022",
     "module": "NodeNext",
     "lib": ["ES2022", "DOM"],
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "nodenext",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "resolveJsonModule": true,
 
     "strict": true,

@@ -19,8 +19,9 @@ const SESSION_QUERY_KEY = "activeSession";
 /**
  * @description Hook customizado que gerencia o envio periódico do Heartbeat para o servidor.
  */
-export function useSessionHeartbeat() {
+export function useSessionHeartbeat(options: { enabled?: boolean } = {}) {
   const queryClient = useQueryClient();
+  const { enabled = true } = options;
 
   // Extrai o estado do store (reativo: o componente re-renderiza se mudar)
   const { session } = useSessionStore();
@@ -57,8 +58,8 @@ export function useSessionHeartbeat() {
 
   // 2. EFEITO: Configuração e Limpeza do Intervalo de Sincronização
   useEffect(() => {
-    // Só sincroniza se houver uma sessão ATIVA (status não é 'paused' ou 'stopped')
-    const isActive = session && session.status === "active";
+    // Só sincroniza se o hook estiver habilitado E houver uma sessão ATIVA
+    const isActive = enabled && session && session.status === "active";
 
     if (!isActive) {
       // Se inativo, garante que o timer não está rodando
@@ -86,7 +87,7 @@ export function useSessionHeartbeat() {
 
     // Função de limpeza: essencial para evitar vazamento de memória
     return () => clearInterval(intervalId);
-  }, [session, heartbeatMutation]); // Dependências: Roda novamente se a sessão mudar ou a mutation mudar
+  }, [session, heartbeatMutation, enabled]); // Dependências: inclui enabled
 
   // O hook não retorna nada; sua função é apenas gerenciar o side effect.
 }

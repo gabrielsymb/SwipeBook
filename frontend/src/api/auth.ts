@@ -13,5 +13,14 @@ export const authApi = {
     return response.data;
   },
 
+  /**
+   * Envia dados para registro de novo prestador.
+   * Rota: POST /auth/register
+   */
+  async register(payload: { nome: string; email: string; senha: string }) {
+    const response = await api.post("/auth/register", payload);
+    return response.data;
+  },
+
   // Futuramente, outras funções de Auth como register, forgotPassword, etc.
 };

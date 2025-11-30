@@ -12,10 +12,10 @@ interface SessionState {
   currentElapsedMs: number;
 
   // Para controle de quando o último tick do timer ocorreu (para calcular o delta)
-  lastTickTimestamp: number | null;
+  lastTickTimestamp: number | undefined;
 
   // Identificador do setInterval (o relógio JavaScript)
-  intervalId: number | null;
+  intervalId: number | undefined;
 }
 
 // As ações que o DockPlayer pode executar
@@ -38,8 +38,8 @@ export const useSessionStore = create<SessionState & SessionActions>(
     // --- Estado Inicial ---
     session: null,
     currentElapsedMs: 0,
-    lastTickTimestamp: null,
-    intervalId: null,
+    lastTickTimestamp: undefined,
+    intervalId: undefined,
 
     // --- Ações de Estado ---
     setActiveSession: (sessao) => {
@@ -57,7 +57,7 @@ export const useSessionStore = create<SessionState & SessionActions>(
       set({
         session: null,
         currentElapsedMs: 0,
-        lastTickTimestamp: null,
+        lastTickTimestamp: undefined,
       }),
 
     updateStatus: (newStatus) => {
@@ -91,16 +91,19 @@ export const useSessionStore = create<SessionState & SessionActions>(
     },
 
     stopLocalTimer: () => {
-      if (get().intervalId) {
+      if (get().intervalId != null) {
         clearInterval(get().intervalId);
-        set({ intervalId: null, lastTickTimestamp: null });
+        set({ intervalId: undefined, lastTickTimestamp: undefined });
       }
     },
 
     tick: () => {
       // Esta é a função principal que é chamada a cada segundo
       set((state) => {
-        if (state.session?.status !== "active" || !state.lastTickTimestamp) {
+        if (
+          state.session?.status !== "active" ||
+          state.lastTickTimestamp == null
+        ) {
           get().stopLocalTimer(); // Garantir que para se o status mudou
           return state;
         }

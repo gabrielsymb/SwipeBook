@@ -9,12 +9,62 @@ import { registerSessionRoutes } from "../modulos/sessoes/rotas/SessionRoutes.js
 // Router agregador
 export function buildRouter() {
   const router = Router();
-  registerClientRoutes(router);
-  registerAuthRoutes(router);
-  registerAppointmentRoutes(router);
-  registerServiceRoutes(router);
-  registerSessionRoutes(router);
-  registerReportRoutes(router);
+
+  // Monta sub-routers com prefixos para cada módulo
+  router.use(
+    "/auth",
+    (() => {
+      const r = Router();
+      registerAuthRoutes(r);
+      return r;
+    })()
+  );
+
+  router.use(
+    "/clientes",
+    (() => {
+      const r = Router();
+      registerClientRoutes(r);
+      return r;
+    })()
+  );
+
+  router.use(
+    "/agendamentos",
+    (() => {
+      const r = Router();
+      registerAppointmentRoutes(r);
+      return r;
+    })()
+  );
+
+  router.use(
+    "/servicos",
+    (() => {
+      const r = Router();
+      registerServiceRoutes(r);
+      return r;
+    })()
+  );
+
+  router.use(
+    "/sessoes",
+    (() => {
+      const r = Router();
+      registerSessionRoutes(r);
+      return r;
+    })()
+  );
+
+  router.use(
+    "/relatorios",
+    (() => {
+      const r = Router();
+      registerReportRoutes(r);
+      return r;
+    })()
+  );
+
   return router;
 }
 
